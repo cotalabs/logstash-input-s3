@@ -349,7 +349,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
 
   private
   def get_s3object
-    s3 = @sse_customer_key.nil? ? Aws::S3::Resource.new(aws_options_hash) : Aws::S3::Resource.new(Aws::S3::Encryption::Client.new(:encryption_key => @sse_customer_key, :client => Aws::S3::Client.new(aws_options_hash)).client)
+    s3 = @sse_customer_key.nil? ? Aws::S3::Resource.new(aws_options_hash) : Aws::S3::Resource.new(:client => Aws::S3::Encryption::Client.new(:encryption_key => @sse_customer_key, :client => Aws::S3::Client.new(aws_options_hash)).client)
   end
 
   private
