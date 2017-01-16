@@ -55,6 +55,12 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
   # default to the current OS temporary directory in linux /tmp/logstash
   config :temporary_directory, :validate => :string, :default => File.join(Dir.tmpdir, "logstash")
 
+  # A client provided encryption algorithm
+  config :sse_customer_algorithm, :validate => :string, :default => nil
+
+  # A client provided master encryption key
+  config :sse_customer_key, :validate => :string, :default => nil
+
   public
   def register
     require "fileutils"
@@ -212,7 +218,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
     line.start_with?('#Fields: ')
   end
 
-  private 
+  private
   def update_metadata(metadata, event)
     line = event.get('message').strip
 
@@ -227,7 +233,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
 
   private
   def read_file(filename, &block)
-    if gzip?(filename) 
+    if gzip?(filename)
       read_gzip_file(filename, block)
     else
       read_plain_file(filename, block)
@@ -256,9 +262,9 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
   def gzip?(filename)
     filename.end_with?('.gz')
   end
-  
+
   private
-  def sincedb 
+  def sincedb
     @sincedb ||= if @sincedb_path.nil?
                     @logger.info("Using default generated file for the sincedb", :filename => sincedb_file)
                     SinceDB::File.new(sincedb_file)
@@ -321,7 +327,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
     @logger.debug("S3 input: Download remote file", :remote_key => remote_object.key, :local_filename => local_filename)
     File.open(local_filename, 'wb') do |s3file|
       return completed if stop?
-      remote_object.get(:response_target => s3file)
+      remote_object.get(:response_target => s3file, :sse_customer_algorithm => @sse_customer_algorithm, :sse_customer_key => @sse_customer_key)
     end
     completed = true
 
