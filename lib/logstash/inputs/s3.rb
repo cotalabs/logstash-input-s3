@@ -1,11 +1,15 @@
 # encoding: utf-8
+require "aws-sdk"
 require "logstash/inputs/base"
 require "logstash/namespace"
+require "logstash/inputs/s3/patch"
 require "logstash/plugin_mixins/aws_config"
 require "time"
 require "tmpdir"
 require "stud/interval"
 require "stud/temporary"
+
+Aws.eager_autoload!
 
 # Stream events from files from a S3 bucket.
 #

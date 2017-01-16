@@ -19,7 +19,9 @@ describe LogStash::Inputs::S3 do
       "secret_access_key" => "secret",
       "bucket" => "logstash-test",
       "temporary_directory" => temporary_directory,
-      "sincedb_path" => File.join(sincedb_path, ".sincedb")
+      "sincedb_path" => File.join(sincedb_path, ".sincedb"),
+      "sse_customer_algorithm" => "AES256",
+      "sse_customer_key" => ""
     }
   }
 
