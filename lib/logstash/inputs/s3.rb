@@ -333,7 +333,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
     @logger.debug("S3 input: Download remote file", :remote_key => remote_object.key, :local_filename => local_filename)
     File.open(local_filename, 'wb') do |s3file|
       return completed if stop?
-      remote_object.get(:response_target => s3file, :sse_customer_algorithm => @sse_customer_algorithm, :sse_customer_key => @sse_customer_key, :sse_customer_key_md5 => (@sse_customer_key.nil? ? nil : Digest::MD5.hexdigest(@sse_customer_key)))
+      remote_object.get(:response_target => s3file, :sse_customer_algorithm => @sse_customer_algorithm, :sse_customer_key => @sse_customer_key)
     end
     completed = true
 
