@@ -63,7 +63,9 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
   config :sse_customer_algorithm, :validate => :string, :default => nil
 
   # A client provided master encryption key
-  config :sse_customer_key, :validate => :string, :default => nil
+  config :ce_envelope_location, :validate => :string, :default => "metadata"
+  config :ce_instruction_file_prefix, :validate => :string, :default => "instruction"
+  config :ce_encryption_key, :validate => :string, :default => nil
 
   public
   def register
@@ -333,7 +335,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
     @logger.debug("S3 input: Download remote file", :remote_key => remote_object.key, :local_filename => local_filename)
     File.open(local_filename, 'wb') do |s3file|
       return completed if stop?
-      remote_object.get(:response_target => s3file, :sse_customer_algorithm => @sse_customer_algorithm, :sse_customer_key => @sse_customer_key)
+      remote_object.get(:response_target => s3file)
     end
     completed = true
 
@@ -349,7 +351,17 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
 
   private
   def get_s3object
-    s3 = @sse_customer_key.nil? ? Aws::S3::Resource.new(aws_options_hash) : Aws::S3::Resource.new(:client => Aws::S3::Encryption::Client.new(:encryption_key => @sse_customer_key, :client => Aws::S3::Client.new(aws_options_hash)).client)
+    if @ce_encryption_key.nil?
+      Aws::S3::Resource.new(aws_options_hash)
+    else
+      base = Aws::S3::Client.new(aws_options_hash)
+      eLoc = (@ce_envelope_location == "metadata" ? :metadata : :instruction)
+      eS3 = Aws::S3::Encryption::Client.new(:encryption_key => @ce_encryption_key,
+                                            :client => base,
+                                            :envelope_location => eLoc,
+                                            :instruction_file_prefix => @ce_instruction_file_prefix)
+      Aws::S3::Resource.new(:client => eS3.client)
+    end
   end
 
   private
