@@ -64,7 +64,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
 
   # A client provided master encryption key
   config :ce_envelope_location, :validate => :string, :default => "metadata"
-  config :ce_instruction_file_prefix, :validate => :string, :default => "instruction"
+  config :ce_instruction_file_suffix, :validate => :string, :default => ".instruction"
   config :ce_encryption_key, :validate => :string, :default => nil
 
   public
@@ -75,9 +75,11 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
 
     @logger.info("Registering s3 input", :bucket => @bucket, :region => @region)
 
-    s3 = get_s3object
+    @s3_client = get_s3object
+    s3 = Aws::S3::Resource.new(aws_options_hash)
 
     @s3bucket = s3.bucket(@bucket)
+    @logger.debug("have bucket", :bucket => @s3bucket)
 
     unless @backup_to_bucket.nil?
       @backup_bucket = s3.bucket(@backup_to_bucket)
@@ -335,7 +337,7 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
     @logger.debug("S3 input: Download remote file", :remote_key => remote_object.key, :local_filename => local_filename)
     File.open(local_filename, 'wb') do |s3file|
       return completed if stop?
-      remote_object.get(:response_target => s3file)
+      @s3_client.get_object(:response_target => s3file, :bucket => remote_object.bucket.name, :key => remote_object.key)
     end
     completed = true
 
@@ -352,15 +354,14 @@ class LogStash::Inputs::S3 < LogStash::Inputs::Base
   private
   def get_s3object
     if @ce_encryption_key.nil?
-      Aws::S3::Resource.new(aws_options_hash)
+      Aws::S3::Client.new(aws_options_hash)
     else
-      base = Aws::S3::Client.new(aws_options_hash)
-      eLoc = (@ce_envelope_location == "metadata" ? :metadata : :instruction)
-      eS3 = Aws::S3::Encryption::Client.new(:encryption_key => @ce_encryption_key,
-                                            :client => base,
-                                            :envelope_location => eLoc,
-                                            :instruction_file_prefix => @ce_instruction_file_prefix)
-      Aws::S3::Resource.new(:client => eS3.client)
+      Aws::S3::Encryption::Client.new(
+        :client => Aws::S3::Client.new(aws_options_hash),
+        :encryption_key => @ce_encryption_key,
+        :envelope_location => :instruction_file,
+        :instruction_file_suffix => @ce_instruction_file_suffix
+      )
     end
   end
 
